@@ -1,0 +1,208 @@
+generator client {
+  provider = "prisma-client"
+  output   = "./generated"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Demo model — shows a complete CRUD pattern.
+// Replace or extend with your own domain models.
+// ---------------------------------------------------------------------------
+
+model Todo {
+  id          Int     @id @default(autoincrement())
+  title       String
+  description String?
+  status      Boolean @default(false)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("todos")
+}
+
+// ---------------------------------------------------------------------------
+// Auth — managed by better-auth
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String     @id
+  name          String
+  email         String     @unique
+  emailVerified Boolean    @default(false)
+  image         String?
+  status        UserStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sessions Session[]
+  accounts Account[]
+  members  Member[]
+
+  @@map("user")
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+model Session {
+  id     String @id
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  token     String   @unique
+  expiresAt DateTime
+
+  ipAddress            String?
+  userAgent            String?
+  activeOrganizationId String?
+  activeTeamId         String?
+  impersonatedBy       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id         String @id @default(cuid())
+  accountId  String
+  providerId String
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  accessToken           String?
+  refreshToken          String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  idToken               String?
+  scope                 String?
+  password              String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+// ---------------------------------------------------------------------------
+// Multi-tenant: Organization → Member → User
+// ---------------------------------------------------------------------------
+
+model Organization {
+  id       String           @id @default(cuid())
+  name     String
+  slug     String           @unique
+  type     OrganizationType
+  logo     String?
+  metadata Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members Member[]
+
+  @@map("organizations")
+}
+
+enum OrganizationType {
+  /// The top-level system/admin organization.
+  SYSTEM
+  /// A standard tenant workspace.
+  WORKSPACE
+}
+
+model Member {
+  id String @id @default(cuid())
+
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  memberRoles MemberRole[]
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+  @@map("members")
+}
+
+// ---------------------------------------------------------------------------
+// RBAC: Role → Permission
+// ---------------------------------------------------------------------------
+
+model Role {
+  id          String  @id @default(cuid())
+  name        String  @unique
+  description String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  permissions RolePermissions[]
+  memberRoles MemberRole[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String  @id @default(cuid())
+  name        String  @unique
+  description String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  roles RolePermissions[]
+
+  @@map("permissions")
+}
+
+model RolePermissions {
+  roleId String
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+model MemberRole {
+  memberId String
+  member   Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  roleId String
+  role   Role   @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@id([memberId, roleId])
+  @@map("member_roles")
+}

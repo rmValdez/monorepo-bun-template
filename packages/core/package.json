@@ -1,0 +1,24 @@
+{
+  "name": "@workspace/core",
+  "version": "0.0.0",
+  "private": true,
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "dependencies": {
+    "@workspace/db": "workspace:*",
+    "dotenv": "^16.4.5",
+    "zod": "^4.4.3"
+  },
+  "scripts": {
+    "db:seed": "bun --env-file=../../.env run seed/seed.ts"
+  },
+  "peerDependencies": {
+    "@tanstack/react-form-start": "^1.33.0",
+    "@tanstack/react-start": "^1.168.26"
+  },
+  "devDependencies": {
+    "@tanstack/react-form-start": "^1.33.0",
+    "@tanstack/react-start": "^1.168.26"
+  }
+}
